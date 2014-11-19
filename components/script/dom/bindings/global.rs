@@ -15,6 +15,7 @@ use dom::window;
 use script_task::ScriptChan;
 
 use servo_net::resource_task::ResourceTask;
+use servo_net::storage_task::StorageTask;
 
 use js::{JSCLASS_IS_GLOBAL, JSCLASS_IS_DOMJSCLASS};
 use js::glue::{GetGlobalForObjectCrossCompartment};
@@ -71,6 +72,14 @@ impl<'a> GlobalRef<'a> {
             Worker(ref worker) => worker.resource_task().clone(),
         }
     }
+
+    pub fn storage_task(&self) -> StorageTask {
+        match *self {
+            Window(ref window) => window.page().storage_task.clone(),
+            Worker(_) => panic!("expected a Window scope"),
+        }
+    }
+
 
     pub fn get_url(&self) -> Url {
         match *self {

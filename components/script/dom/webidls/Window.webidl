@@ -127,3 +127,9 @@ partial interface Window {
   void gc();
 };
 Window implements OnErrorEventHandlerForWindow;
+
+[NoInterfaceObject]
+interface WindowSessionStorage {
+  readonly attribute Storage sessionStorage;
+};
+Window implements WindowSessionStorage;

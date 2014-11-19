@@ -20,6 +20,7 @@ use dom::location::Location;
 use dom::navigator::Navigator;
 use dom::performance::Performance;
 use dom::screen::Screen;
+use dom::storage::Storage;
 use layout_interface::NoQuery;
 use page::Page;
 use script_task::{ExitWindowMsg, ScriptChan, TriggerLoadMsg, TriggerFragmentMsg};
@@ -62,6 +63,7 @@ pub struct Window {
     navigation_start: u64,
     navigation_start_precise: f64,
     screen: MutNullableJS<Screen>,
+    session_storage: MutNullableJS<Storage>,
     timers: TimerManager
 }
 
@@ -206,6 +208,14 @@ impl<'a> WindowMethods for JSRef<'a, Window> {
             self.location.assign(Some(location));
         }
         self.location.get().unwrap()
+    }
+
+    fn SessionStorage(self) -> Temporary<Storage> {
+        if self.session_storage.get().is_none() {
+            let session_storage = Storage::new(&global::Window(self));
+            self.session_storage.assign(Some(session_storage));
+        }
+        self.session_storage.get().unwrap()
     }
 
     fn Console(self) -> Temporary<Console> {
@@ -412,6 +422,7 @@ impl Window {
             navigation_start: time::get_time().sec as u64,
             navigation_start_precise: time::precise_time_s(),
             screen: Default::default(),
+            session_storage: Default::default(),
             timers: TimerManager::new()
         };
 
