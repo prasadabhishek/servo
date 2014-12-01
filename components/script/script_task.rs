@@ -336,7 +336,7 @@ impl ScriptTask {
 
         let page = Page::new(id, None, layout_chan, window_size,
                              resource_task.clone(),
-                             storage_task.clone(),
+                             storage_task,
                              constellation_chan.clone(),
                              js_context.clone());
 

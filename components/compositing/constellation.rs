@@ -63,7 +63,7 @@ pub struct Constellation<LTF, STF> {
     devtools_chan: Option<DevtoolsControlChan>,
 
     /// A channel through which messages can be sent to the storage task.
-    pub storage_task: StorageTask,
+    storage_task: StorageTask,
 
     /// A list of all the pipelines. (See the `pipeline` module for more details.)
     pipelines: HashMap<PipelineId, Rc<Pipeline>>,
