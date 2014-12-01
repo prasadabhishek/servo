@@ -31,6 +31,7 @@ use timers::{Interval, NonInterval, TimerId, TimerManager};
 use servo_msg::compositor_msg::ScriptListener;
 use servo_msg::constellation_msg::LoadData;
 use servo_net::image_cache_task::ImageCacheTask;
+use servo_net::storage_task::StorageTask;
 use servo_util::str::{DOMString,HTML_SPACE_CHARACTERS};
 
 use js::jsapi::JS_EvaluateUCScript;
@@ -107,6 +108,10 @@ impl Window {
 
     pub fn get_url(&self) -> Url {
         self.page().get_url()
+    }
+
+    pub fn storage_task(&self) -> StorageTask {
+        self.page().storage_task.clone()
     }
 }
 

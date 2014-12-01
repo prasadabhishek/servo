@@ -12,6 +12,7 @@ use servo_util::str::DOMString;
 use servo_net::storage_task::StorageTask;
 use servo_net::storage_task::StorageTaskMsg;
 use std::comm::channel;
+use url::Url;
 
 #[dom_struct]
 pub struct Storage {
@@ -35,30 +36,16 @@ impl Storage {
         Ok(Storage::new(global))
     }
 
-    fn get_origin_as_string(&self) -> String {
-
+    fn get_url(&self) -> Url {
         let global_root = self.global.root();
         let global_ref = global_root.root_ref();
-        let url = global_ref.get_url();
-
-        let mut origin = "".to_string();
-        origin.push_str(url.scheme.as_slice());
-        origin.push_str("://");
-        if url.domain() != None {
-            origin.push_str(url.domain().unwrap().as_slice());
-        }
-        origin.push_str("/");
-        if url.port() != None {
-            origin.push_str(url.port().unwrap().to_string().as_slice());
-        }
-        return origin;
+        global_ref.get_url()
     }
 
     fn get_storage_task(&self) -> StorageTask {
-
         let global_root = self.global.root();
         let global_ref = global_root.root_ref();
-        global_ref.storage_task()
+        global_ref.as_window().storage_task()
     }
 
 }
@@ -67,30 +54,21 @@ impl<'a> StorageMethods for JSRef<'a, Storage> {
     fn Length(self) -> u32 {
         let (sender, receiver) = channel();
 
-        let origin = self.get_origin_as_string();
-        let storage_task = self.get_storage_task();
-
-        storage_task.send(StorageTaskMsg::Length(sender, origin));
+        self.get_storage_task().send(StorageTaskMsg::Length(sender, self.get_url()));
         receiver.recv()
     }
 
     fn Key(self, index: u32) -> Option<DOMString> {
         let (sender, receiver) = channel();
 
-        let origin = self.get_origin_as_string();
-        let storage_task = self.get_storage_task();
-
-        storage_task.send(StorageTaskMsg::Key(sender, origin, index));
+        self.get_storage_task().send(StorageTaskMsg::Key(sender, self.get_url(), index));
         receiver.recv()
     }
 
     fn GetItem(self, name: DOMString) -> Option<DOMString> {
         let (sender, receiver) = channel();
 
-        let origin = self.get_origin_as_string();
-        let storage_task = self.get_storage_task();
-
-        storage_task.send(StorageTaskMsg::GetItem(sender, origin, name));
+        self.get_storage_task().send(StorageTaskMsg::GetItem(sender, self.get_url(), name));
         receiver.recv()
     }
 
@@ -101,13 +79,10 @@ impl<'a> StorageMethods for JSRef<'a, Storage> {
     }
 
     fn SetItem(self, name: DOMString, value: DOMString) {
-        //update value only if the given name/value pair does not exist
+        //As per spec, method should do nothing if the given name/value pair already exists
         let item = self.GetItem(name.clone());
         if !item.is_some() || item.unwrap().as_slice() != value.as_slice() {
-            let origin = self.get_origin_as_string();
-            let storage_task = self.get_storage_task();
-
-            storage_task.send(StorageTaskMsg::SetItem(origin, name, value));
+            self.get_storage_task().send(StorageTaskMsg::SetItem(self.get_url(), name, value));
         }
     }
 
@@ -120,13 +95,10 @@ impl<'a> StorageMethods for JSRef<'a, Storage> {
     }
 
     fn RemoveItem(self, name: DOMString) {
-        //remove value only if the given name/value pair does not exist
+        //As per spec, method should do nothing if the given name does not exist
         let item = self.GetItem(name.clone());
         if item.is_some() {
-            let origin = self.get_origin_as_string();
-            let storage_task = self.get_storage_task();
-
-            storage_task.send(StorageTaskMsg::RemoveItem(origin, name));
+            self.get_storage_task().send(StorageTaskMsg::RemoveItem(self.get_url(), name));
         }
     }
 
@@ -135,10 +107,7 @@ impl<'a> StorageMethods for JSRef<'a, Storage> {
     }
 
     fn Clear(self) {
-        let origin = self.get_origin_as_string();
-        let storage_task = self.get_storage_task();
-
-        storage_task.send(StorageTaskMsg::Clear(origin));
+        self.get_storage_task().send(StorageTaskMsg::Clear(self.get_url()));
     }
 }
 
