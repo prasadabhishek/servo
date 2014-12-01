@@ -11,7 +11,7 @@ use dom::bindings::error::Fallible;
 use servo_util::str::DOMString;
 use servo_net::storage_task::StorageTask;
 use servo_net::storage_task::StorageTaskMsg;
-use std::comm::{channel, Receiver, Sender};
+use std::comm::channel;
 
 #[dom_struct]
 pub struct Storage {
@@ -65,44 +65,33 @@ impl Storage {
 
 impl<'a> StorageMethods for JSRef<'a, Storage> {
     fn Length(self) -> u32 {
-        /* Create a new Channel */
-        let (sender, receiver): (Sender<u32>, Receiver<u32>) = channel();
+        let (sender, receiver) = channel();
 
         let origin = self.get_origin_as_string();
         let storage_task = self.get_storage_task();
 
-        /* Send Request on Storage Task Channel */
-       storage_task.send(StorageTaskMsg::Length(sender.clone(), origin.clone()));
-        /* Wait for Reply on Self Channel */
+        storage_task.send(StorageTaskMsg::Length(sender, origin));
         receiver.recv()
     }
 
     fn Key(self, index: u32) -> Option<DOMString> {
-        /* Create a new Channel */
-        let (sender, receiver): (Sender<Option<DOMString>>, Receiver<Option<DOMString>>) = channel();
+        let (sender, receiver) = channel();
 
         let origin = self.get_origin_as_string();
         let storage_task = self.get_storage_task();
 
-        /* Send Request on Storage Task Channel */
-       storage_task.send(StorageTaskMsg::Key(sender.clone(), origin.clone(), index));
-        /* Wait for Reply on Self Channel */
-        let key = receiver.recv();
-        key
+        storage_task.send(StorageTaskMsg::Key(sender, origin, index));
+        receiver.recv()
     }
 
     fn GetItem(self, name: DOMString) -> Option<DOMString> {
-        /* Create a new Channel */
-        let (sender, receiver): (Sender<Option<DOMString>>, Receiver<Option<DOMString>>) = channel();
+        let (sender, receiver) = channel();
 
         let origin = self.get_origin_as_string();
         let storage_task = self.get_storage_task();
 
-        /* Send Request on Storage Task Channel */
-       storage_task.send(StorageTaskMsg::GetItem(sender.clone(), origin.clone(), name));
-        /* Wait for Reply on Self Channel */
-        let item = receiver.recv();
-        item
+        storage_task.send(StorageTaskMsg::GetItem(sender, origin, name));
+        receiver.recv()
     }
 
     fn NamedGetter(self, name: DOMString, found: &mut bool) -> Option<DOMString> {
@@ -118,8 +107,7 @@ impl<'a> StorageMethods for JSRef<'a, Storage> {
             let origin = self.get_origin_as_string();
             let storage_task = self.get_storage_task();
 
-            /* Send Request on Storage Task Channel */
-           storage_task.send(StorageTaskMsg::SetItem(origin.clone(), name, value));
+            storage_task.send(StorageTaskMsg::SetItem(origin, name, value));
         }
     }
 
@@ -138,8 +126,7 @@ impl<'a> StorageMethods for JSRef<'a, Storage> {
             let origin = self.get_origin_as_string();
             let storage_task = self.get_storage_task();
 
-            /* Send Request on Storage Task Channel */
-           storage_task.send(StorageTaskMsg::RemoveItem(origin.clone(), name));
+            storage_task.send(StorageTaskMsg::RemoveItem(origin, name));
         }
     }
 
@@ -151,8 +138,7 @@ impl<'a> StorageMethods for JSRef<'a, Storage> {
         let origin = self.get_origin_as_string();
         let storage_task = self.get_storage_task();
 
-        /* Send Request on Storage Task Channel */
-       storage_task.send(StorageTaskMsg::Clear(origin.clone()));
+        storage_task.send(StorageTaskMsg::Clear(origin));
     }
 }
 
