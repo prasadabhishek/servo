@@ -44,7 +44,7 @@ use servo_net::image_cache_task::ImageCacheTask;
 #[cfg(not(test))]
 use servo_net::resource_task::new_resource_task;
 #[cfg(not(test))]
-use servo_net::storage_task::new_storage_task;
+use servo_net::storage_task::StorageTaskFactory;
 #[cfg(not(test))]
 use gfx::font_cache_task::FontCacheTask;
 #[cfg(not(test))]
@@ -115,7 +115,7 @@ impl<Window> Browser<Window> where Window: WindowMethods + 'static {
                 ImageCacheTask::new(resource_task.clone(), shared_task_pool)
             };
             let font_cache_task = FontCacheTask::new(resource_task.clone());
-            let storage_task = new_storage_task();
+            let storage_task = StorageTaskFactory::new();
             let constellation_chan = Constellation::<layout::layout_task::LayoutTask,
                                                      script::script_task::ScriptTask>::start(
                                                           compositor_proxy_for_constellation,

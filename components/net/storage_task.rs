@@ -37,13 +37,19 @@ pub enum StorageTaskMsg {
 /// Handle to a storage task
 pub type StorageTask = Sender<StorageTaskMsg>;
 
-/// Create a StorageTask
-pub fn new_storage_task() -> StorageTask {
-    let (chan, port) = channel();
-    spawn_named("StorageManager", proc() {
-        StorageManager::new(port).start();
-    });
-    chan
+pub trait StorageTaskFactory {
+    fn new() -> StorageTask;
+}
+
+impl StorageTaskFactory for StorageTask {
+    /// Create a StorageTask
+    fn new() -> StorageTask {
+        let (chan, port) = channel();
+        spawn_named("StorageManager", proc() {
+            StorageManager::new(port).start();
+        });
+        chan
+    }
 }
 
 struct StorageManager {
