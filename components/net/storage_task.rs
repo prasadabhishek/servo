@@ -99,9 +99,9 @@ impl StorageManager {
 
     fn key(&self, sender: Sender<Option<DOMString>>, url: Url, index: u32) {
         let origin = self.get_origin_as_string(url);
-        let result = self.data.get(&origin).
-            and_then(|entry| entry.keys().nth(index as uint)).
-            map(|key| key.clone());
+        let result = self.data.get(&origin)
+            .and_then(|entry| entry.keys().nth(index as uint))
+            .map(|key| key.clone());
 
         sender.send(result);
     }
