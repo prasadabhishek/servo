@@ -1,7 +1,6 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-use std::cell::RefCell;
 use std::comm::{channel, Receiver, Sender};
 use std::collections::HashMap;
 use std::collections::TreeMap;
@@ -49,20 +48,20 @@ pub fn new_storage_task() -> StorageTask {
 
 struct StorageManager {
     port: Receiver<StorageTaskMsg>,
-    data: RefCell<HashMap<String, RefCell<TreeMap<DOMString, DOMString>>>>,
+    data: HashMap<String, TreeMap<DOMString, DOMString>>,
 }
 
 impl StorageManager {
     fn new(port: Receiver<StorageTaskMsg>) -> StorageManager {
         StorageManager {
             port: port,
-            data: RefCell::new(HashMap::new()),
+            data: HashMap::new(),
         }
     }
 }
 
 impl StorageManager {
-    fn start(&self) {
+    fn start(&mut self) {
         loop {
             match self.port.recv() {
               Length(sender, url) => {
@@ -92,81 +91,52 @@ impl StorageManager {
 
     fn length(&self, sender: Sender<u32>, url: Url) {
         let origin = self.get_origin_as_string(url);
-        match self.data.borrow().get(&origin) {
-            Some(origin_data) => sender.send(origin_data.borrow().len() as u32),
+        match self.data.get(&origin) {
+            Some(origin_data) => sender.send(origin_data.len() as u32),
             None => sender.send(0),
         }
     }
 
     fn key(&self, sender: Sender<Option<DOMString>>, url: Url, index: u32) {
-        let mut result: Option<DOMString> = None;
-
         let origin = self.get_origin_as_string(url);
-        match self.data.borrow().get(&origin) {
-            Some(origin_data) => {
-                if index < origin_data.borrow().len() as u32 {
-                    let mut i: u32 = 0;
-                    for key in origin_data.borrow().keys() {
-                        if i == index {
-                            result = Some((*key).clone());
-                            break;
-                        }
-                        i = i + 1;
-                    }
-
-                }
-            }
-            None => {}
-        }
+        let result = self.data.get(&origin).
+            and_then(|entry| entry.keys().nth(index as uint)).
+            map(|key| key.clone());
 
         sender.send(result);
     }
 
-    fn set_item(&self,  url: Url, name: DOMString, value: DOMString) {
+    fn set_item(&mut self,  url: Url, name: DOMString, value: DOMString) {
         let origin = self.get_origin_as_string(url);
-        if !self.data.borrow().contains_key(&origin) {
-            self.data.borrow_mut().insert(origin.clone(), RefCell::new(TreeMap::new()));
+        if !self.data.contains_key(&origin) {
+            self.data.insert(origin.clone(), TreeMap::new());
         }
-
-        match self.data.borrow().get(&origin) {
-            Some(origin_data) => {
-                origin_data.borrow_mut().insert(name, value);
-            }
-            None => {}
-        }
+        self.data.get_mut(&origin).unwrap().insert(name, value);
     }
 
     fn get_item(&self, sender: Sender<Option<DOMString>>, url: Url, name: DOMString) {
-        let mut result: Option<DOMString> = None;
-
         let origin = self.get_origin_as_string(url);
-        match self.data.borrow().get(&origin) {
-            Some(origin_data) => {
-                match origin_data.borrow().get(&name) {
-                    Some(value) => result = Some(value.to_string()),
-                    None => {},
-                }
-            }
-            None => {}
-        }
+        let result = self.data.get(&origin)
+            .and_then(|entry| entry.get(&name))
+            .map(|value| value.to_string());
 
         sender.send(result);
     }
 
-    fn remove_item(&self, url: Url, name: DOMString) {
+    fn remove_item(&mut self, url: Url, name: DOMString) {
         let origin = self.get_origin_as_string(url);
-        match self.data.borrow().get(&origin) {
+        match self.data.get_mut(&origin) {
             Some(origin_data) => {
-                origin_data.borrow_mut().remove(&name);
+                origin_data.remove(&name);
             }
             None => {}
         }
     }
 
-    fn clear(&self, url: Url) {
+    fn clear(&mut self, url: Url) {
         let origin = self.get_origin_as_string(url);
-        match self.data.borrow().get(&origin) {
-            Some(origin_data) => origin_data.borrow_mut().clear(),
+        match self.data.get_mut(&origin) {
+            Some(origin_data) => origin_data.clear(),
             None => {}
         }
     }
@@ -176,8 +146,10 @@ impl StorageManager {
         origin.push_str(url.scheme.as_slice());
         origin.push_str("://");
         url.domain().map(|domain| origin.push_str(domain.as_slice()));
-        origin.push_str(":");
-        url.port().map(|port| origin.push_str(port.to_string().as_slice()));
+        url.port().map(|port| {
+            origin.push_str(":");
+            origin.push_str(port.to_string().as_slice());
+        });
         origin.push_str("/");
         origin
     }

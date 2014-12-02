@@ -81,7 +81,7 @@ impl<'a> StorageMethods for JSRef<'a, Storage> {
     fn SetItem(self, name: DOMString, value: DOMString) {
         //As per spec, method should do nothing if the given name/value pair already exists
         let item = self.GetItem(name.clone());
-        if !item.is_some() || item.unwrap().as_slice() != value.as_slice() {
+        if item.is_none() || item.unwrap().as_slice() != value.as_slice() {
             self.get_storage_task().send(StorageTaskMsg::SetItem(self.get_url(), name, value));
         }
     }
