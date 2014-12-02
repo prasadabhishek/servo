@@ -70,27 +70,27 @@ impl StorageManager {
     fn start(&mut self) {
         loop {
             match self.port.recv() {
-              Length(sender, url) => {
-                  self.length(sender, url)
-              }
-              Key(sender, url, index) => {
-                  self.key(sender, url, index)
-              }
-              SetItem(url, name, value) => {
-                  self.set_item(url, name, value)
-              }
-              GetItem(sender, url, name) => {
-                  self.get_item(sender, url, name)
-              }
-              RemoveItem(url, name) => {
-                  self.remove_item(url, name)
-              }
-              Clear(url) => {
-                  self.clear(url)
-              }
-              Exit => {
-                break
-              }
+                Length(sender, url) => {
+                    self.length(sender, url)
+                }
+                Key(sender, url, index) => {
+                    self.key(sender, url, index)
+                }
+                SetItem(url, name, value) => {
+                    self.set_item(url, name, value)
+                }
+                GetItem(sender, url, name) => {
+                    self.get_item(sender, url, name)
+                }
+                RemoveItem(url, name) => {
+                    self.remove_item(url, name)
+                }
+                Clear(url) => {
+                    self.clear(url)
+                }
+                Exit => {
+                    break
+                }
             }
         }
     }
@@ -112,7 +112,7 @@ impl StorageManager {
         sender.send(result);
     }
 
-    fn set_item(&mut self,  url: Url, name: DOMString, value: DOMString) {
+    fn set_item(&mut self, url: Url, name: DOMString, value: DOMString) {
         let origin = self.get_origin_as_string(url);
         if !self.data.contains_key(&origin) {
             self.data.insert(origin.clone(), TreeMap::new());
