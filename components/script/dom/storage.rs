@@ -79,10 +79,11 @@ impl<'a> StorageMethods for JSRef<'a, Storage> {
     }
 
     fn SetItem(self, name: DOMString, value: DOMString) {
-        //As per spec, method should do nothing if the given name/value pair already exists
-        let item = self.GetItem(name.clone());
-        if item.is_none() || item.unwrap().as_slice() != value.as_slice() {
-            self.get_storage_task().send(StorageTaskMsg::SetItem(self.get_url(), name, value));
+        let (sender, receiver) = channel();
+
+        self.get_storage_task().send(StorageTaskMsg::SetItem(sender, self.get_url(), name, value));
+        if receiver.recv() {
+            //TODO send notification
         }
     }
 
@@ -95,10 +96,11 @@ impl<'a> StorageMethods for JSRef<'a, Storage> {
     }
 
     fn RemoveItem(self, name: DOMString) {
-        //As per spec, method should do nothing if the given name does not exist
-        let item = self.GetItem(name.clone());
-        if item.is_some() {
-            self.get_storage_task().send(StorageTaskMsg::RemoveItem(self.get_url(), name));
+        let (sender, receiver) = channel();
+
+        self.get_storage_task().send(StorageTaskMsg::RemoveItem(sender, self.get_url(), name));
+        if receiver.recv() {
+            //TODO send notification
         }
     }
 
@@ -107,7 +109,12 @@ impl<'a> StorageMethods for JSRef<'a, Storage> {
     }
 
     fn Clear(self) {
-        self.get_storage_task().send(StorageTaskMsg::Clear(self.get_url()));
+        let (sender, receiver) = channel();
+
+        self.get_storage_task().send(StorageTaskMsg::Clear(sender, self.get_url()));
+        if receiver.recv() {
+            //TODO send notification
+        }
     }
 }
 

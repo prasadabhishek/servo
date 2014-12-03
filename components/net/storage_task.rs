@@ -22,13 +22,13 @@ pub enum StorageTaskMsg {
 
     /// sets the value of the given key in the associated storage data
     /// TODO throw QuotaExceededError in case of error
-    SetItem(Url, DOMString, DOMString),
+    SetItem(Sender<bool>, Url, DOMString, DOMString),
 
     /// removes the key/value pair for the given key in the associated storage data
-    RemoveItem(Url, DOMString),
+    RemoveItem(Sender<bool>, Url, DOMString),
 
     /// clears the associated storage data by removing all the key/value pairs
-    Clear(Url),
+    Clear(Sender<bool>, Url),
 
     /// shut down this task
     Exit
@@ -76,17 +76,17 @@ impl StorageManager {
                 Key(sender, url, index) => {
                     self.key(sender, url, index)
                 }
-                SetItem(url, name, value) => {
-                    self.set_item(url, name, value)
+                SetItem(sender, url, name, value) => {
+                    self.set_item(sender, url, name, value)
                 }
                 GetItem(sender, url, name) => {
                     self.get_item(sender, url, name)
                 }
-                RemoveItem(url, name) => {
-                    self.remove_item(url, name)
+                RemoveItem(sender, url, name) => {
+                    self.remove_item(sender, url, name)
                 }
-                Clear(url) => {
-                    self.clear(url)
+                Clear(sender, url) => {
+                    self.clear(sender, url)
                 }
                 Exit => {
                     break
@@ -97,54 +97,57 @@ impl StorageManager {
 
     fn length(&self, sender: Sender<u32>, url: Url) {
         let origin = self.get_origin_as_string(url);
-        match self.data.get(&origin) {
-            Some(origin_data) => sender.send(origin_data.len() as u32),
-            None => sender.send(0),
-        }
+        sender.send(self.data.get(&origin).map_or(0u, |entry| entry.len()) as u32);
     }
 
     fn key(&self, sender: Sender<Option<DOMString>>, url: Url, index: u32) {
         let origin = self.get_origin_as_string(url);
-        let result = self.data.get(&origin)
-            .and_then(|entry| entry.keys().nth(index as uint))
-            .map(|key| key.clone());
-
-        sender.send(result);
+        sender.send(self.data.get(&origin)
+                    .and_then(|entry| entry.keys().nth(index as uint))
+                    .map(|key| key.clone()));
     }
 
-    fn set_item(&mut self, url: Url, name: DOMString, value: DOMString) {
+    fn set_item(&mut self, sender: Sender<bool>, url: Url, name: DOMString, value: DOMString) {
         let origin = self.get_origin_as_string(url);
         if !self.data.contains_key(&origin) {
             self.data.insert(origin.clone(), TreeMap::new());
         }
-        self.data.get_mut(&origin).unwrap().insert(name, value);
+
+        let updated = self.data.get_mut(&origin).map(|entry| {
+            if entry.get(&origin).map_or(true, |item| item.as_slice() != value.as_slice()) {
+                entry.insert(name.clone(), value.clone());
+                true
+            } else {
+                false
+            }
+        }).unwrap();
+
+        sender.send(updated);
     }
 
     fn get_item(&self, sender: Sender<Option<DOMString>>, url: Url, name: DOMString) {
         let origin = self.get_origin_as_string(url);
-        let result = self.data.get(&origin)
-            .and_then(|entry| entry.get(&name))
-            .map(|value| value.to_string());
-
-        sender.send(result);
+        sender.send(self.data.get(&origin)
+                    .and_then(|entry| entry.get(&name))
+                    .map(|value| value.to_string()));
     }
 
-    fn remove_item(&mut self, url: Url, name: DOMString) {
+    fn remove_item(&mut self, sender: Sender<bool>, url: Url, name: DOMString) {
         let origin = self.get_origin_as_string(url);
-        match self.data.get_mut(&origin) {
-            Some(origin_data) => {
-                origin_data.remove(&name);
-            }
-            None => {}
-        }
+        sender.send(self.data.get_mut(&origin)
+                    .map_or(false, |entry| entry.remove(&name).is_some()));
     }
 
-    fn clear(&mut self, url: Url) {
+    fn clear(&mut self, sender: Sender<bool>, url: Url) {
         let origin = self.get_origin_as_string(url);
-        match self.data.get_mut(&origin) {
-            Some(origin_data) => origin_data.clear(),
-            None => {}
-        }
+        sender.send(self.data.get_mut(&origin)
+                    .map_or(false, |entry| {
+                        if !entry.is_empty() {
+                            entry.clear();
+                            true
+                        } else {
+                            false
+                        }}));
     }
 
     fn get_origin_as_string(&self, url: Url) -> String {
